@@ -102,6 +102,16 @@ module TabsConnector
         raise NotImplementedError, "You must implement this method"
       end
 
+      def set_campaign_time_zone(campaign)
+        Rails.logger.debug "---------- get_time_zone is #{get_time_zone}"
+        time_zone = get_time_zone
+        if time_zone.present?
+          unless campaign.time_zone == time_zone
+            campaign.update_attributes(:time_zone => time_zone)
+          end
+        end
+      end
+
       def load_campaign
         Rails.logger.debug "---------- TabsConnector::Contest#load_campaign"
         if get_campaign_token(true).present?
@@ -109,9 +119,13 @@ module TabsConnector
             c.client_id = @tabs_client.id
             c.update_attributes(CAMPAIGN_SETTING)
           end
+
           unless @campaign
             render :text => "Can't find or create Campaign" and return
           end
+
+          set_campaign_time_zone(@campaign)
+          Rails.logger.debug "---------- @campaign.time_zone is #{@campaign.time_zone.inspect}"
         else
           render :text => "campaign_token missing in params" and return
         end

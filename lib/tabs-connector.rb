@@ -75,7 +75,12 @@ module TabsConnector
   end
 
   def get_tabs_data
-    get_current_session[:tabs]
+    tabs_data = get_current_session[:tabs]
+    if tabs_data
+      tabs_data
+    else
+      {}
+    end
   end
 
   def get_tabs_client_id(id_name=:client_id)
@@ -91,6 +96,10 @@ module TabsConnector
 
   def get_simulated_time
     get_tabs_data['simulated_time']
+  end
+
+  def get_time_zone
+    get_tabs_data['time_zone']
   end
 
 end
