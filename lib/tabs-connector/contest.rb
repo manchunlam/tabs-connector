@@ -93,9 +93,15 @@ module TabsConnector
       end
 
       def on_facebook?
-        Rails.logger.debug "---------- get_tabs_data['on_fb'] is #{get_tabs_data['on_fb'].inspect}"
-        Rails.logger.debug "---------- get_tabs_data['on_fb'].class is #{get_tabs_data['on_fb'].class.inspect}"
-        get_tabs_data['on_fb'] == 1 ? true : false
+        get_tabs_data['on_fb'] == 1
+      end
+
+      def in_preview?
+        on_facebook? && ( get_tabs_data['preview'] == 1 )
+      end
+
+      def simulated?
+        get_tabs_data['simulated'] == 1
       end
 
       def auto_sign_in
@@ -103,7 +109,6 @@ module TabsConnector
       end
 
       def set_campaign_time_zone(campaign)
-        Rails.logger.debug "---------- get_time_zone is #{get_time_zone}"
         time_zone = get_time_zone
         if time_zone.present?
           unless campaign.time_zone == time_zone
@@ -125,7 +130,6 @@ module TabsConnector
           end
 
           set_campaign_time_zone(@campaign)
-          Rails.logger.debug "---------- @campaign.time_zone is #{@campaign.time_zone.inspect}"
         else
           render :text => "campaign_token missing in params" and return
         end
@@ -144,14 +148,26 @@ module TabsConnector
         end
       end
 
+      def set_phase_for_preview(phase)
+        @environment.active_phase_id = phase.try(:id)
+        @environment.save!
+      end
+
       def load_phase
         Rails.logger.debug "---------- TabsConnector::Contest#load_phase"
 
         return if @phase_loaded
 
         begin
-          @phase = @environment.get_active_phase(Time.at(get_simulated_time).in_time_zone)
+          set_phase_for_preview(nil)
+          if ( in_preview? || simulated? )
+            @phase = @environment.get_active_phase(Time.at(get_simulated_time).utc)
+            set_phase_for_preview(@phase)
+          else
+            @phase = @environment.get_active_phase(Time.at(get_simulated_time).utc)
+          end
         rescue Exception => e
+          Rails.logger.debug "---------- e is #{e.inspect}"
           @phase = @environment.get_active_phase
         end
 
