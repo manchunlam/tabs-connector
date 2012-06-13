@@ -23,19 +23,30 @@ module TabsConnector
     Rails.logger.debug "---------- session is #{session.inspect}"
     # params[:session_id] exists if Third-party Cookies are blocked
     if params[:session_id].present? && request.cookies.empty?
-      memcached_settings = YAML.load_file("#{Rails.root}/config/memcached.yml")["defaults"]
-      Rails.logger.debug "---------- memcached_settings is #{memcached_settings.inspect}"
-      Rails.logger.debug "---------- memcached_settings['servers'] is #{memcached_settings['servers'].inspect}"
-      memcached_servers = MemCache.new(memcached_settings["servers"])
-      Rails.logger.debug "---------- memcached_servers is #{memcached_servers.inspect}"
+      if Rails.application.config.session_store.name =~ /MemCacheStore/
+        memcached_settings = YAML.load_file("#{Rails.root}/config/memcached.yml")["defaults"]
+        Rails.logger.debug "---------- memcached_settings is #{memcached_settings.inspect}"
+        Rails.logger.debug "---------- memcached_settings['servers'] is #{memcached_settings['servers'].inspect}"
+        memcached_servers = MemCache.new(memcached_settings["servers"])
+        Rails.logger.debug "---------- memcached_servers is #{memcached_servers.inspect}"
 
-      previous_session = memcached_servers.get "rack:session:#{params[:session_id]}"
-      Rails.logger.debug "---------- session_for_blocked_cookies previous_session is #{previous_session.inspect}"
+        previous_session = memcached_servers.get "rack:session:#{params[:session_id]}"
+        Rails.logger.debug "---------- session_for_blocked_cookies previous_session is #{previous_session.inspect}"
 
-      session.update(previous_session.to_hash)
+      elsif Rails.application.config.session_store == ActiveRecord::SessionStore
+        previous_session_obj = ActiveRecord::SessionStore::Session.find_by_session_id(params[:session_id])
+        previous_session = previous_session_obj.data if previous_session_obj
 
-      # set the current session's session_key to previous session's session_key
-      request.session_options[:id] = params[:session_id]
+      else
+        fail "Unimplemented Session Store for TabsConnector#session_for_blocked_cookies"
+      end
+
+      if previous_session
+        session.update(previous_session.to_hash)
+        # set the current session's session_key to previous session's session_key
+        request.session_options[:id] = params[:session_id]
+      end
+
       Rails.logger.debug "---------- session_for_blocked_cookies session is #{previous_session.inspect}"
     end
   end
