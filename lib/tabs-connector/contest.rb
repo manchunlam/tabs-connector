@@ -104,6 +104,10 @@ module TabsConnector
         get_tabs_data['simulated'] == 1
       end
 
+      def as_embed?
+        get_tabs_data['embed'] == 1
+      end
+
       def auto_sign_in
         raise NotImplementedError, "You must implement this method"
       end
