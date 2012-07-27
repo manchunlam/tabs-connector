@@ -23,20 +23,19 @@ module TabsConnector
     Rails.logger.debug "---------- session is #{session.inspect}"
     # params[:session_id] exists if Third-party Cookies are blocked
     if params[:session_id].present? && request.cookies.empty?
-      if Rails.application.config.session_store.name =~ /MemCacheStore/
+      if /MemCacheStore/ =~ Rails.application.config.session_store.name
         memcached_settings = YAML.load_file("#{Rails.root}/config/memcached.yml")["defaults"]
-        Rails.logger.debug "---------- memcached_settings is #{memcached_settings.inspect}"
-        Rails.logger.debug "---------- memcached_settings['servers'] is #{memcached_settings['servers'].inspect}"
         memcached_servers = MemCache.new(memcached_settings["servers"])
-        Rails.logger.debug "---------- memcached_servers is #{memcached_servers.inspect}"
-
         previous_session = memcached_servers.get "rack:session:#{params[:session_id]}"
-        Rails.logger.debug "---------- session_for_blocked_cookies previous_session is #{previous_session.inspect}"
-
       elsif Rails.application.config.session_store == ActiveRecord::SessionStore
         previous_session_obj = ActiveRecord::SessionStore::Session.find_by_session_id(params[:session_id])
         previous_session = previous_session_obj.data if previous_session_obj
-
+      elsif /SmartSessionStore/ =~ Rails.application.config.session_store.name
+        if defined?(Mysql2Session) && Mysql2Session.class == Class
+          previous_session_obj = Mysql2Session.find_session(params[:session_id])
+          data = Marshal.load(Base64.decode64(previous_session_obj.data))
+          previous_session = data if previous_session_obj
+        end
       else
         fail "Unimplemented Session Store for TabsConnector#session_for_blocked_cookies"
       end
