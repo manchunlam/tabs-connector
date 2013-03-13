@@ -62,6 +62,13 @@ module TabsConnector
     end
   end
 
+  def write_locale_to_session
+    if ( locale = get_current_session[:tabs]['locale'] ).present?
+      get_current_session[:locale] = locale
+    end
+  end
+
+
   def write_tabs_params_to_session
     Rails.logger.debug "---------- TabsConnector#write_tabs_params_to_session"
     # write all the params from Tabs to session
@@ -72,6 +79,7 @@ module TabsConnector
     begin
       if ( tabs_data = params[:tabs] ).present?
         get_current_session[:tabs] = ActiveSupport::JSON.decode(tabs_data)
+        write_locale_to_session
       end
     rescue Exception => e
       Rails.logger.debug "---------- #{e.inspect}"
