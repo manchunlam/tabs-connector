@@ -176,7 +176,7 @@ module TabsConnector
         end
 
         unless @phase
-          render :text => "Phases are not active now" and return
+          render :text => I18n.t('phase_not_active') and return
         end
 
         @phase_loaded = true
