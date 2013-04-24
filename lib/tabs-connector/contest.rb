@@ -143,7 +143,7 @@ module TabsConnector
         Rails.logger.debug "---------- TabsConnector::Contest#load_environment"
         @environment = Environment.find_or_create_by_campaign_id(@campaign.id) do |e|
           e.update_attributes(:name => "Tabs Environment #{@campaign.environments.count + 1}",
-                              :magic_url => MAGIC_URL)
+            :magic_url => MAGIC_URL, :caching => false)
         end
         unless @environment
           render :text => "Can't find or create Environment" and return
